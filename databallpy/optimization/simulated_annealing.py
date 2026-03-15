@@ -9,14 +9,11 @@ from databallpy.optimization.optimization import (
     OptimizationAlgorithm,
     OptimizationResult,
     ObjectiveTerm,
+    Constraint,
 )
 from copy import deepcopy
 from databallpy import Game
-from databallpy.utils.utils import sigmoid
 
-import pickle
-
-from pathlib import Path
 
 
 class SimulatedAnnealing(OptimizationAlgorithm):
@@ -26,6 +23,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         selected_frame_idx: int,
         objective_terms: list[ObjectiveTerm],
         weights: list[float],
+        constraints: list[Constraint] = None,
         distance_perturbation=0.2,
         num_iterations=1000,
         max_tti=1,
@@ -63,38 +61,14 @@ class SimulatedAnnealing(OptimizationAlgorithm):
 
         self.defending_player_ids = self.game.get_column_ids(team=self.defending_team)
         self.attacking_player_ids = self.game.get_column_ids(team=self.attacking_team)
-
-        self.player_to_starting_pos_and_vel_map = self.frame[
-            [c + "_x" for c in game.get_column_ids()]
-            + [c + "_y" for c in game.get_column_ids()]
-            + [c + "_vx" for c in game.get_column_ids()]
-            + [c + "_vy" for c in game.get_column_ids()]
-        ]
-
         self.objective_terms = objective_terms
         self.weights = weights
-
-
-    # TTI Implementation from https://github.com/devinpleuler/analytics-handbook/blob/master/soccer_analytics_handbook.ipynb
-    def tti(self, origin, destination, velocity, reaction_time, max_velocity=5.0):
-        u = (origin + velocity) - origin
-        v = destination - origin
-        u_mag = np.sqrt(np.sum(u**2, axis=-1))
-        v_mag = np.sqrt(np.sum(v**2, axis=-1))
-        dot_product = np.sum(u * v, axis=-1)
-        angle = np.arccos(dot_product / (u_mag * v_mag))
-        r_reaction = origin + velocity * reaction_time
-        d = destination - r_reaction
-        t = (
-            u_mag * angle / np.pi
-            + reaction_time
-            + np.linalg.norm(d, axis=-1) / max_velocity
-        )
-
-        return t
+        self.constraints = constraints
+        for constraint in self.constraints:
+            constraint.compute_prerequisites(game=self.game, frame=self.frame)
 
     def perturbation(self, input_frame):
-        new_frame = deepcopy(input_frame)
+        proposed_new_frame = deepcopy(input_frame)
         # randomly choose 1 of the defenders
         # TODO see if we can cache the unselected players to avoid recomputing every time
         self.selected_players = random.sample(self.defending_player_ids, 1)
@@ -102,33 +76,19 @@ class SimulatedAnnealing(OptimizationAlgorithm):
             # move each player up to a maximal distance from their starting positions
             x_col = c + "_x"
             y_col = c + "_y"
-            vx_col = c + "_vx"
-            vy_col = c + "_vy"
-            player_initial_x_pos = self.player_to_starting_pos_and_vel_map[x_col]
-            player_initial_y_pos = self.player_to_starting_pos_and_vel_map[y_col]
-            player_initial_vx = self.player_to_starting_pos_and_vel_map[vx_col]
-            player_initial_vy = self.player_to_starting_pos_and_vel_map[vy_col]
-            new_x_pos = new_frame[x_col] + random.uniform(
-                -self.distance_perturbation, self.distance_perturbation
-            )
-            new_y_pos = new_frame[y_col] + random.uniform(
-                -self.distance_perturbation, self.distance_perturbation
-            )
 
+            new_x_pos = proposed_new_frame[x_col] + random.uniform(
+                -self.distance_perturbation, self.distance_perturbation
+            )
+            new_y_pos = proposed_new_frame[y_col] + random.uniform(
+                -self.distance_perturbation, self.distance_perturbation
+            )
+            proposed_new_frame[y_col] = new_y_pos
+            proposed_new_frame[x_col] = new_x_pos
             # check if the new position is reachable within max time to intercept (tti)
-            if (
-                self.tti(
-                    np.array([player_initial_x_pos, player_initial_y_pos]),
-                    np.array([new_x_pos, new_y_pos]),
-                    np.array([player_initial_vx, player_initial_vy]),
-                    0.1,
-                )
-                < self.max_tti
-            ):
-                new_frame[y_col] = new_y_pos
-                new_frame[x_col] = new_x_pos
-
-        return new_frame
+            if all(constraint.check(proposed_new_frame, c) for constraint in self.constraints):
+                return proposed_new_frame
+            return input_frame
 
     def compute_objective(self, input_frame):
         objective_total = 0

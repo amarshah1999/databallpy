@@ -9,6 +9,7 @@ from databallpy.features.pitch_control import (
 from databallpy.optimization.optimization import (
     WeightedPitchControlObjective,
     PressureObjective,
+    TTIConstraint
 )
 import pandas as pd
 import numpy as np
@@ -106,7 +107,8 @@ annealer = SimulatedAnnealing(
             attacking_player_ids=game.get_column_ids(team=defending_team), game=game
         ),
     ],
-    weights=[1, 100],
+    constraints=[TTIConstraint()],
+    weights=[1, 1],
     distance_perturbation=0.2,  # how many yards to randomly move the player on each iteration
     max_tti=2,  # the maximum time to intercept, i.e. don't move a player if they can't reach that space within 1s
     num_iterations=1000,  # the number of perturbations to do
