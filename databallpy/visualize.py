@@ -402,6 +402,7 @@ def plot_tracking_data(
     add_velocities: bool = False,
     heatmap_overlay: np.ndarray | None = None,
     overlay_cmap: Colormap | str = "viridis",
+    alpha: float = 1,
 ) -> tuple[plt.figure, plt.axes]:
     """Function to plot the tracking data of a specific index in the
     game.tracking_data.
@@ -491,7 +492,7 @@ def plot_tracking_data(
         _, ax = _plot_velocities(ax, td, idx, game, [])
 
     _, ax = _plot_single_frame(
-        ax, td_ht, td_at, idx, team_colors, [], td, game, pitch_color
+        ax, td_ht, td_at, idx, team_colors, [], td, game, pitch_color, alpha
     )
 
     if variable_of_interest is not None:
@@ -863,6 +864,7 @@ def _plot_single_frame(
     td: pd.DataFrame,
     game: Game,
     pitch_color,
+    alpha: float = 0.9,
 ) -> tuple[list, plt.axes]:
     """Helper function to plot the single frame of the current frame."""
     # Scatter plot the teams
@@ -873,7 +875,7 @@ def _plot_single_frame(
             td_team[x_cols],
             td_team[y_cols],
             c=c,
-            alpha=0.9,
+            alpha=alpha,
             s=90,
             zorder=2.5,
         )

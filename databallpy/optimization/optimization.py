@@ -140,6 +140,7 @@ class TTIConstraint(Constraint):
         self.reaction_time = reaction_time
         self.max_velocity = max_velocity
 
+    #FixMe - this is a lazy implementation
     def compute_prerequisites(self, game: Game = None, frame: pd.Series = None) -> None:
         self.player_to_starting_pos_and_vel_map = frame[
             [c + "_x" for c in game.get_column_ids()]
@@ -166,8 +167,6 @@ class TTIConstraint(Constraint):
         return t
 
     def check(self, proposed_new_frame, player_id) -> bool:
-        if not self.player_to_starting_pos_and_vel_map:
-            raise ValueError("Player to starting pos and vel map not computed, try calling TTIConstraint.compute_prerequisites() first")
         x_col, y_col, vx_col, vy_col = [player_id + suffix for suffix in ["_x", "_y", "_vx", "_vy"]]
         origin = np.array([self.player_to_starting_pos_and_vel_map[x_col], self.player_to_starting_pos_and_vel_map[y_col]])
         velocity = np.array([self.player_to_starting_pos_and_vel_map[vx_col], self.player_to_starting_pos_and_vel_map[vy_col]])
@@ -175,17 +174,14 @@ class TTIConstraint(Constraint):
         
         return self.tti(origin, destination, velocity) < self.max_time_to_intercept_seconds
 
-class Filters:
-    pass
 
-
-# def optimize_tracking_frame(
-#     game: Game,
-#     selected_frame_idx: int,
-#     objective: ObjectiveFunction,
-#     algorithm: OptimizationAlgorithm, # --> in the beginning only SimulatedAnnealing
-#     constraints: Constraints, # Within optimization algo
-#     filters: Filters # The variables the optimization algo is allowed to change
-# ) -> OptimizationResult:
-#     optimizer = OptimizationAlgorithm(game, selected_frame_idx)
-#     return optimizer.run()
+def optimize_tracking_frame(
+    game: Game,
+    selected_frame_idx: int,
+    objective_terms: list[ObjectiveTerm],
+    weights: list[float],
+    constraints: list[Constraint],
+    algorithm: OptimizationAlgorithm,
+) -> OptimizationResult:
+    optimizer = algorithm(game, selected_frame_idx, objective_terms, weights, constraints)
+    return optimizer.run()

@@ -24,6 +24,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         objective_terms: list[ObjectiveTerm],
         weights: list[float],
         constraints: list[Constraint] = None,
+        defending_players_to_optimize: list[str] = None,
         distance_perturbation=0.2,
         num_iterations=1000,
         max_tti=1,
@@ -34,13 +35,8 @@ class SimulatedAnnealing(OptimizationAlgorithm):
             game.tracking_data["frame"] == selected_frame_idx
         ].iloc[0]
 
-        self.attacking_team = self.frame["team_possession"]
-        self.defending_team = (
-            "home" if self.frame["team_possession"] == "away" else "away"
-        )
-
-        # annealing params
-        self.distance_perturbation = distance_perturbation  # how much to move the player
+        # annealing params, per https://www.geeksforgeeks.org/artificial-intelligence/what-is-simulated-annealing/
+        self.distance_perturbation = distance_perturbation 
         self.p_0 = 0.5
         self.T_0 = -100 / (math.log(self.p_0))
         self.T = self.T_0
@@ -48,19 +44,8 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         self.num_iterations = num_iterations
         self.max_tti = max_tti
 
-        self.grid = np.meshgrid(
-            np.linspace(
-                -self.game.pitch_dimensions[0] / 2,
-                self.game.pitch_dimensions[0] / 2,
-                106,
-            ),
-            np.linspace(
-                -self.game.pitch_dimensions[1] / 2, self.game.pitch_dimensions[1] / 2, 68
-            ),
-        )
+        self.defending_players_to_optimize = defending_players_to_optimize if defending_players_to_optimize else self.game.get_column_ids(team="home" if self.frame["team_possession"] == "away" else "away")
 
-        self.defending_player_ids = self.game.get_column_ids(team=self.defending_team)
-        self.attacking_player_ids = self.game.get_column_ids(team=self.attacking_team)
         self.objective_terms = objective_terms
         self.weights = weights
         self.constraints = constraints
@@ -71,7 +56,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         proposed_new_frame = deepcopy(input_frame)
         # randomly choose 1 of the defenders
         # TODO see if we can cache the unselected players to avoid recomputing every time
-        self.selected_players = random.sample(self.defending_player_ids, 1)
+        self.selected_players = random.sample(self.defending_players_to_optimize, 1)
         for c in self.selected_players:
             # move each player up to a maximal distance from their starting positions
             x_col = c + "_x"
