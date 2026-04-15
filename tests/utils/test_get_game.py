@@ -170,6 +170,12 @@ class TestGetGame(unittest.TestCase):
 
         self.td_tracab["period_id"] = [1, 1, MISSING_INT, 2, 2]
 
+        self.corrected_ed["team_name"] = self.corrected_ed["team_id"].map(
+            {
+                self.md_opta.home_team_id: self.md_opta.home_team_name,
+                self.md_opta.away_team_id: self.md_opta.away_team_name,
+            }
+        )
         self.expected_game_tracab_opta = Game(
             tracking_data=self.td_tracab,
             event_data=self.corrected_ed,
@@ -219,6 +225,12 @@ class TestGetGame(unittest.TestCase):
             "end_datetime_ed"
         ]
 
+        self.ed_metrica["team_name"] = self.ed_metrica["team_id"].map(
+            {
+                md_metrica_ed.home_team_id: md_metrica_ed.home_team_name,
+                md_metrica_ed.away_team_id: md_metrica_ed.away_team_name,
+            }
+        )
         self.expected_game_metrica = Game(
             tracking_data=self.td_metrica,
             event_data=EventData(self.ed_metrica, provider="metrica"),
@@ -334,6 +346,12 @@ class TestGetGame(unittest.TestCase):
                 ],
             }
         )
+        self.ed_instat["team_name"] = self.ed_instat["team_id"].map(
+            {
+                self.md_instat.home_team_id: self.md_instat.home_team_name,
+                self.md_instat.away_team_id: self.md_instat.away_team_name,
+            }
+        )
         self.expected_game_inmotio_instat = Game(
             tracking_data=self.td_inmotio,
             event_data=EventData(self.ed_instat, provider="instat"),
@@ -404,6 +422,9 @@ class TestGetGame(unittest.TestCase):
         self.statsbomb_event_loc = "tests/test_data/statsbomb_event_test.json"
         self.statsbomb_match_loc = "tests/test_data/statsbomb_match_test.json"
         self.statsbomb_lineup_loc = "tests/test_data/statsbomb_lineup_test.json"
+
+        self.fifa_event_loc = "tests/test_data/fifa_events_test.json"
+        self.fifa_metadata_loc = "tests/test_data/fifa_metadata_test.json"
 
     def test_get_game_wrong_inputs(self):
         with self.assertRaises(ValueError):
@@ -494,6 +515,22 @@ class TestGetGame(unittest.TestCase):
         )
 
         assert game == expected_game_opta
+
+    def test_get_game_team_name_column_populated(self):
+        game = get_game(
+            event_data_loc=self.ed_opta_loc,
+            event_metadata_loc=self.md_opta_loc,
+            event_data_provider="opta",
+        )
+        self.assertIn("team_name", game.event_data.columns)
+        home_mask = game.event_data["team_id"] == game.home_team_id
+        away_mask = game.event_data["team_id"] == game.away_team_id
+        self.assertTrue(
+            (game.event_data.loc[home_mask, "team_name"] == game.home_team_name).all()
+        )
+        self.assertTrue(
+            (game.event_data.loc[away_mask, "team_name"] == game.away_team_name).all()
+        )
 
     def test_get_game_only_tracking_data(self):
         game = get_game(
@@ -761,3 +798,46 @@ class TestGetGame(unittest.TestCase):
         self.assertTrue(len(res_game.shot_events) == 2)
         self.assertTrue(len(res_game.pass_events) == 3)
         self.assertTrue(len(res_game.dribble_events) == 1)
+
+    def test_get_game_fifa(self):
+        res_game = get_game(
+            event_data_loc=self.fifa_event_loc,
+            event_metadata_loc=self.fifa_metadata_loc,
+            event_data_provider="fifa",
+            check_quality=False,
+        )
+        self.assertIsInstance(res_game, Game)
+        self.assertEqual(res_game.home_team_id, 100)
+        self.assertEqual(res_game.home_team_name, "HOME TEAM")
+        self.assertEqual(res_game.away_team_id, 200)
+        self.assertEqual(res_game.away_team_name, "AWAY TEAM")
+        self.assertEqual(res_game.home_score, 1)
+        self.assertEqual(res_game.away_score, 2)
+        self.assertEqual(len(res_game.event_data), 7)
+        self.assertEqual(res_game.event_data.provider, "fifa")
+        expected_cols = {
+            "event_id",
+            "databallpy_event",
+            "period_id",
+            "minutes",
+            "seconds",
+            "player_id",
+            "team_id",
+            "start_x",
+            "start_y",
+            "datetime",
+        }
+        self.assertTrue(expected_cols.issubset(set(res_game.event_data.columns)))
+        self.assertEqual(len(res_game.shot_events), 4)
+        self.assertEqual(len(res_game.pass_events), 2)
+        self.assertEqual(res_game.pitch_dimensions, [105.0, 68.0])
+        self.assertEqual(res_game.country, "Netherlands")
+        self.assertTrue(res_game._event_timestamp_is_precise)
+
+    def test_get_game_fifa_missing_metadata(self):
+        with self.assertRaises(ValueError):
+            get_game(
+                event_data_loc=self.fifa_event_loc,
+                event_metadata_loc=None,
+                event_data_provider="fifa",
+            )
