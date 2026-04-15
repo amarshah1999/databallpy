@@ -1,19 +1,18 @@
 # Annealer
-import random
 import math
-import pandas as pd
-import numpy as np
-from databallpy.features.pitch_control import get_team_influence
-from databallpy.schemas.tracking_data import TrackingData
+import random
+from copy import deepcopy
+
+from databallpy import Game
 from databallpy.optimization.optimization import (
+    Constraint,
+    ObjectiveTerm,
     OptimizationAlgorithm,
     OptimizationResult,
-    ObjectiveTerm,
-    Constraint,
 )
-from copy import deepcopy
-from databallpy import Game
+from databallpy.utils.logging import create_logger
 
+LOGGER = create_logger(__name__)
 
 
 class SimulatedAnnealing(OptimizationAlgorithm):
@@ -36,7 +35,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         ].iloc[0]
 
         # annealing params, per https://www.geeksforgeeks.org/artificial-intelligence/what-is-simulated-annealing/
-        self.distance_perturbation = distance_perturbation 
+        self.distance_perturbation = distance_perturbation
         self.p_0 = 0.5
         self.T_0 = -100 / (math.log(self.p_0))
         self.T = self.T_0
@@ -44,7 +43,13 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         self.num_iterations = num_iterations
         self.max_tti = max_tti
 
-        self.defending_players_to_optimize = defending_players_to_optimize if defending_players_to_optimize else self.game.get_column_ids(team="home" if self.frame["team_possession"] == "away" else "away")
+        self.defending_players_to_optimize = (
+            defending_players_to_optimize
+            if defending_players_to_optimize
+            else self.game.get_column_ids(
+                team="home" if self.frame["team_possession"] == "away" else "away"
+            )
+        )
 
         self.objective_terms = objective_terms
         self.weights = weights
@@ -57,10 +62,10 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         # randomly choose 1 of the defenders
         # TODO see if we can cache the unselected players to avoid recomputing every time
         self.selected_players = random.sample(self.defending_players_to_optimize, 1)
-        for c in self.selected_players:
+        for player_id in self.selected_players:
             # move each player up to a maximal distance from their starting positions
-            x_col = c + "_x"
-            y_col = c + "_y"
+            x_col = player_id + "_x"
+            y_col = player_id + "_y"
 
             new_x_pos = proposed_new_frame[x_col] + random.uniform(
                 -self.distance_perturbation, self.distance_perturbation
@@ -71,7 +76,10 @@ class SimulatedAnnealing(OptimizationAlgorithm):
             proposed_new_frame[y_col] = new_y_pos
             proposed_new_frame[x_col] = new_x_pos
             # check if the new position is reachable within max time to intercept (tti)
-            if all(constraint.check(proposed_new_frame, c) for constraint in self.constraints):
+            if all(
+                constraint.check(proposed_new_frame, player_id)
+                for constraint in self.constraints
+            ):
                 return proposed_new_frame
             return input_frame
 
@@ -90,7 +98,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         latest_frame = deepcopy(self.frame)
         last_checkpoint_score = 0
         T = self.T
-        print("running annealer")
+
         for i in range(1, self.num_iterations):
             perturbed_frame = self.perturbation(latest_frame)
             new_score = self.compute_objective(perturbed_frame)
@@ -105,11 +113,18 @@ class SimulatedAnnealing(OptimizationAlgorithm):
                 latest_frame = perturbed_frame
             T = T * self.cooling_rate
             if i % 200 == 0:
-                print(f"iteration {i} / {self.num_iterations} best_score {best_score}")
+                LOGGER.info(
+                    "Iteration %s / %s, best_score=%s",
+                    i,
+                    self.num_iterations,
+                    best_score,
+                )
                 if last_checkpoint_score == best_score:
-                    print("No improvement found in last 200 iterations... exiting.")
+                    LOGGER.warning(
+                        "No improvement found in last 200 iterations. Exiting early."
+                    )
                     break
                 last_checkpoint_score = best_score
 
-        print(f"best score {best_score}")
+        LOGGER.info("Finished simulated annealing. Best score=%s", best_score)
         return OptimizationResult(best_frame=best_solution, best_result=best_score)
