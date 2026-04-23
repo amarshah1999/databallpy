@@ -35,7 +35,7 @@ class Constraint(ABC):
         return None
 
     @abstractmethod
-    def check(self, proposed_new_frame, player_id)  -> bool:
+    def check(self, proposed_new_frame, player_id) -> bool:
         raise NotImplementedError
 
 
@@ -49,7 +49,9 @@ class OptimizationAlgorithm(ABC):
         weights: list[float],
         constraints: list[Constraint] | None = None,
     ):
-        
+        if len(objective_terms) != len(weights):
+            raise ValueError("objective_terms and weights must have equal length")
+
         self.game = game
         self.frame = game.tracking_data[
             game.tracking_data["frame"] == selected_frame_idx
@@ -57,11 +59,9 @@ class OptimizationAlgorithm(ABC):
         self.constraints = constraints or []
         for constraint in self.constraints:
             constraint.compute_prerequisites(game=self.game, frame=self.frame)
-        if len(self.objective_terms) != len(self.weights):
-            raise ValueError("objective_terms and weights must have equal length")
+
         self.objective_terms = objective_terms
         self.weights = weights
-
 
     @abstractmethod
     def run(self) -> OptimizationResult:
@@ -88,4 +88,3 @@ def optimize_tracking_frame(
         **algorithm_kwargs,
     )
     return optimizer.run()
-
