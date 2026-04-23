@@ -57,22 +57,24 @@ class OptimizationAlgorithm(ABC):
         raise NotImplementedError
 
 
-# def optimize_tracking_frame(
-#     game: Game,
-#     selected_frame_idx: int,
-#     objective_terms: list[ObjectiveTerm],
-#     weights: list[float],
-#     constraints: list[Constraint],
-#     algorithm: type[OptimizationAlgorithm],
-# ) -> OptimizationResult:
-#     LOGGER.info("Running optimization with %s", algorithm.__name__)
+def optimize_tracking_frame(
+    game: Game,
+    selected_frame_idx: int,
+    objective_terms: list[ObjectiveTerm],
+    weights: list[float],
+    constraints: list[Constraint],
+    algorithm: type[OptimizationAlgorithm],
+    **algorithm_kwargs: Any,
+) -> OptimizationResult:
+    LOGGER.info("Running optimization with %s", algorithm.__name__)
 
-#     optimizer = algorithm(
-#         game=game,
-#         selected_frame_idx=selected_frame_idx,
-#         objective_terms=objective_terms,
-#         weights=weights,
-#         constraints=constraints,
-#     )
-#     return optimizer.run()
+    optimizer = algorithm(
+        game=game,
+        selected_frame_idx=selected_frame_idx,
+        objective_terms=objective_terms,
+        weights=weights,
+        constraints=constraints,
+        **algorithm_kwargs,
+    )
+    return optimizer.run()
 

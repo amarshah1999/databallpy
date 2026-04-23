@@ -22,11 +22,10 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         selected_frame_idx: int,
         objective_terms: list[ObjectiveTerm],
         weights: list[float],
-        constraints: list[Constraint] = None,
-        defending_players_to_optimize: list[str] = None,
-        distance_perturbation=0.2,
-        num_iterations=1000,
-        max_tti=1,
+        constraints: list[Constraint] = [],
+        defending_players_to_optimize: list[str] | None = None,
+        distance_perturbation: float = 0.2,
+        num_iterations: int = 1000,
     ):
         # data
         self.game = game
@@ -41,7 +40,6 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         self.T = self.T_0
         self.cooling_rate = 0.9
         self.num_iterations = num_iterations
-        self.max_tti = max_tti
 
         self.defending_players_to_optimize = (
             defending_players_to_optimize

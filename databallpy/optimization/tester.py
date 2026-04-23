@@ -14,6 +14,7 @@ from databallpy.optimization.objectives import (
     WeightedPitchControlObjective,
 )
 from databallpy.optimization.simulated_annealing import SimulatedAnnealing
+from databallpy.optimization.optimization import optimize_tracking_frame
 from databallpy.visualize import (
     plot_soccer_pitch,
     plot_tracking_data,
@@ -148,29 +149,49 @@ attacking_team_influence = get_team_influence(
     grid=grid,
     player_ball_distances=None,
 )
-annealer = SimulatedAnnealing(
-    game,
-    selected_frame_idx,
-    objective_terms=[
-        WeightedPitchControlObjective(
-            grid=grid,
-            attacking_team=attacking_team,
-            defending_team=defending_team,
-            attacking_team_influence=attacking_team_influence,
-            defending_player_ids=game.get_column_ids(team=defending_team),
-        ),
-        PressureObjective(
-            attacking_player_ids=game.get_column_ids(team=defending_team), game=game
-        ),
-    ],
-    constraints=[TTIConstraint()],
-    weights=[1, 1],
-    distance_perturbation=0.2,  # how many yards to randomly move the player on each iteration
-    max_tti=2,  # the maximum time to intercept, i.e. don't move a player if they can't reach that space within 1s
-    num_iterations=1000,  # the number of perturbations to do
-)
+# annealer = SimulatedAnnealing(
+#     game,
+#     selected_frame_idx,
+#     objective_terms=[
+#         WeightedPitchControlObjective(
+#             grid=grid,
+#             attacking_team=attacking_team,
+#             defending_team=defending_team,
+#             attacking_team_influence=attacking_team_influence,
+#             defending_player_ids=game.get_column_ids(team=defending_team),
+#         ),
+#         PressureObjective(
+#             attacking_player_ids=game.get_column_ids(team=defending_team), game=game
+#         ),
+#     ],
+#     constraints=[TTIConstraint()],
+#     weights=[1, 1],
+#     distance_perturbation=0.2,  # how many yards to randomly move the player on each iteration
+#     max_tti=2,  # the maximum time to intercept, i.e. don't move a player if they can't reach that space within 1s
+#     num_iterations=1000,  # the number of perturbations to do
+# )
 
-result = annealer.run()
+result = optimize_tracking_frame(
+    game = game,
+    selected_frame_idx = selected_frame_idx, 
+    objective_terms = [
+            WeightedPitchControlObjective(
+                grid=grid,
+                attacking_team=attacking_team,
+                defending_team=defending_team,
+                attacking_team_influence=attacking_team_influence,
+                defending_player_ids=game.get_column_ids(team=defending_team),
+            ),
+            PressureObjective(
+                attacking_player_ids=game.get_column_ids(team=defending_team), game=game
+            ),
+        ], 
+    weights=[1, 1], 
+    constraints=[TTIConstraint(max_time_to_intercept_seconds=2)], 
+    algorithm=SimulatedAnnealing,
+    num_iterations = 3000,
+    )
+
 print(result.best_result)
 # new_game = deepcopy(game)
 # new_game.tracking_data = pd.DataFrame(result.best_frame).transpose().reset_index()
