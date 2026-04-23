@@ -27,12 +27,8 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         distance_perturbation: float = 0.2,
         num_iterations: int = 1000,
     ):
-        # data
-        self.game = game
-        self.frame = game.tracking_data[
-            game.tracking_data["frame"] == selected_frame_idx
-        ].iloc[0]
 
+        super().__init__(game=game, selected_frame_idx=selected_frame_idx, objective_terms=objective_terms, constraints=constraints, weights=weights)
         # annealing params, per https://www.geeksforgeeks.org/artificial-intelligence/what-is-simulated-annealing/
         self.distance_perturbation = distance_perturbation
         self.p_0 = 0.5
@@ -48,12 +44,6 @@ class SimulatedAnnealing(OptimizationAlgorithm):
                 team="home" if self.frame["team_possession"] == "away" else "away"
             )
         )
-
-        self.objective_terms = objective_terms
-        self.weights = weights
-        self.constraints = constraints
-        for constraint in self.constraints:
-            constraint.compute_prerequisites(game=self.game, frame=self.frame)
 
     def perturbation(self, input_frame):
         proposed_new_frame = deepcopy(input_frame)
