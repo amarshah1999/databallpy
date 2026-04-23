@@ -6,7 +6,6 @@ from databallpy.optimization.optimization import Constraint
 
 
 class TTIConstraint(Constraint):
-
     def __init__(
         self,
         max_time_to_intercept_seconds: float = 1,

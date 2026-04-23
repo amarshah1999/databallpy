@@ -27,8 +27,13 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         distance_perturbation: float = 0.2,
         num_iterations: int = 1000,
     ):
-
-        super().__init__(game=game, selected_frame_idx=selected_frame_idx, objective_terms=objective_terms, constraints=constraints, weights=weights)
+        super().__init__(
+            game=game,
+            selected_frame_idx=selected_frame_idx,
+            objective_terms=objective_terms,
+            constraints=constraints,
+            weights=weights,
+        )
         # annealing params, per https://www.geeksforgeeks.org/artificial-intelligence/what-is-simulated-annealing/
         self.distance_perturbation = distance_perturbation
         self.p_0 = 0.5
