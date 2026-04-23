@@ -9,8 +9,9 @@ from databallpy.game import Game
 from databallpy.optimization.optimization import ObjectiveTerm, ObjectiveType
 from databallpy.schemas.tracking_data import TrackingData
 from databallpy.utils.utils import sigmoid
+from scipy.ndimage import zoom
 
-BASE_DIR = Path(__file__).resolve().parent
+XT_MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "open_play_xT.npy"
 
 
 class WeightedPitchControlObjective(ObjectiveTerm):
@@ -31,8 +32,10 @@ class WeightedPitchControlObjective(ObjectiveTerm):
         self.defending_player_ids = defending_player_ids
         self.attacking_team_influence = attacking_team_influence
         if xt_array is None:
-            with open(BASE_DIR / "xTArray.pkl", "rb") as f:
-                self.xt_array = pickle.load(f)
+            open_play_xt = np.load(XT_MODEL_PATH)
+            # we are using (y, x) orientation instead of (x, y) so that it matches
+            self.xt_array = zoom(open_play_xt, (106 / 264, 68 / 196), order=1).T
+
         else:
             self.xt_array = xt_array
         if self.attacking_team == "away":
