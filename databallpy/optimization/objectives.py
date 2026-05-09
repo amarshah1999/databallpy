@@ -24,15 +24,16 @@ class WeightedPitchControlObjective(ObjectiveTerm):
     ):
         super().__init__(computation_type=ObjectiveType.GRID)
         self.grid = np.meshgrid(
-        np.linspace(-game.pitch_dimensions[0] / 2, game.pitch_dimensions[0] / 2, 106),
-        np.linspace(-game.pitch_dimensions[1] / 2, game.pitch_dimensions[1] / 2, 68),
-    )
+            np.linspace(
+                -game.pitch_dimensions[0] / 2, game.pitch_dimensions[0] / 2, 106
+            ),
+            np.linspace(-game.pitch_dimensions[1] / 2, game.pitch_dimensions[1] / 2, 68),
+        )
 
-
-        self.attacking_team = frame["team_possession"] 
+        self.attacking_team = frame["team_possession"]
         self.defending_team = "home" if self.attacking_team == "away" else "away"
         self.defending_player_ids = game.get_column_ids(team=self.defending_team)
-        
+
         self.attacking_team_influence = get_team_influence(
             frame,
             col_ids=game.get_column_ids(team=self.attacking_team),
@@ -74,12 +75,13 @@ class PressureObjective(ObjectiveTerm):
         frame: pd.Series,
         players_to_press: list[str] | None = None,
     ):
-
         super().__init__(computation_type=ObjectiveType.PLAYER)
 
         self.game = game
         self.players_to_press = (
-            players_to_press if players_to_press else game.get_column_ids(team=frame["team_possession"])
+            players_to_press
+            if players_to_press
+            else game.get_column_ids(team=frame["team_possession"])
         )
 
     def compute(self, input_frame: pd.Series) -> float:

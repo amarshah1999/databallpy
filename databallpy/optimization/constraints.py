@@ -8,7 +8,7 @@ from databallpy.optimization.optimization import Constraint
 class TTIConstraint(Constraint):
     def __init__(
         self,
-        game: Game, 
+        game: Game,
         frame: pd.Series,
         max_time_to_intercept_seconds: float = 1,
         reaction_time: float = 0.1,
