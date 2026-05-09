@@ -31,9 +31,6 @@ class OptimizationResult:
 
 
 class Constraint(ABC):
-    def compute_prerequisites(self, game: Game = None, frame: pd.Series = None) -> None:
-        return None
-
     @abstractmethod
     def check(self, proposed_new_frame, player_id) -> bool:
         raise NotImplementedError
@@ -57,8 +54,6 @@ class OptimizationAlgorithm(ABC):
             game.tracking_data["frame"] == selected_frame_idx
         ].iloc[0]
         self.constraints = constraints or []
-        for constraint in self.constraints:
-            constraint.compute_prerequisites(game=self.game, frame=self.frame)
 
         self.objective_terms = objective_terms
         self.weights = weights

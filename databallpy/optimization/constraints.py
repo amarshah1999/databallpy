@@ -8,6 +8,8 @@ from databallpy.optimization.optimization import Constraint
 class TTIConstraint(Constraint):
     def __init__(
         self,
+        game: Game, 
+        frame: pd.Series,
         max_time_to_intercept_seconds: float = 1,
         reaction_time: float = 0.1,
         max_velocity: float = 5.0,
@@ -16,8 +18,6 @@ class TTIConstraint(Constraint):
         self.reaction_time = reaction_time
         self.max_velocity = max_velocity
 
-    # FixMe - this is a lazy implementation
-    def compute_prerequisites(self, game: Game, frame: pd.Series) -> None:
         self.player_to_starting_pos_and_vel_map = frame[
             [c + "_x" for c in game.get_column_ids()]
             + [c + "_y" for c in game.get_column_ids()]
