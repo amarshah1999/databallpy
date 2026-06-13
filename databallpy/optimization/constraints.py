@@ -32,7 +32,13 @@ class TTIConstraint(Constraint):
         u_mag = np.sqrt(np.sum(u**2, axis=-1))
         v_mag = np.sqrt(np.sum(v**2, axis=-1))
         dot_product = np.sum(u * v, axis=-1)
-        angle = np.arccos(dot_product / (u_mag * v_mag))
+
+        denom = u_mag * v_mag
+        # stationary player edge case
+        if denom == 0:
+            angle = 0.0
+        else:
+            angle = np.arccos(dot_product / denom)
         r_reaction = origin + velocity * self.reaction_time
         d = destination - r_reaction
         t = (

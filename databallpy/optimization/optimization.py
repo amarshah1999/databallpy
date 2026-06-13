@@ -50,9 +50,7 @@ class OptimizationAlgorithm(ABC):
             raise ValueError("objective_terms and weights must have equal length")
 
         self.game = game
-        self.frame = game.tracking_data[
-            game.tracking_data["frame"] == selected_frame_idx
-        ].iloc[0]
+        self.frame = game.tracking_data.loc[[selected_frame_idx]].iloc[0]
         self.constraints = constraints or []
 
         self.objective_terms = objective_terms
