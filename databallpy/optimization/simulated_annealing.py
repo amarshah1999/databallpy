@@ -1,6 +1,8 @@
 # Annealer
 import math
 import random
+import numpy as np
+
 from copy import deepcopy
 
 from databallpy import Game
@@ -117,7 +119,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
             new_score = self.compute_objective(perturbed_frame)
             # take the new result if it's better, or randomly take a worse result with decaying probability
             if (new_score > best_score) or math.exp(
-                (new_score - best_score) / T
+                np.clip((new_score - best_score) / T, -700, 700)
             ) > self._rng.random():
                 latest_frame = perturbed_frame
             if new_score > best_score:
