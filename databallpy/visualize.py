@@ -854,20 +854,16 @@ def _plot_velocities(
     return variable_fig_objs, ax
 
 
-def _plot_single_frame(
+def _plot_player_positions(
     ax: plt.axes,
     td_ht: pd.DataFrame,
     td_at: pd.DataFrame,
     idx: int,
     team_colors: list[str],
     variable_fig_objs: list,
-    td: pd.DataFrame,
-    game: Game,
-    pitch_color,
     alpha: float = 0.9,
 ) -> tuple[list, plt.axes]:
-    """Helper function to plot the single frame of the current frame."""
-    # Scatter plot the teams
+    """Helper function to plot the player positions of a single frame"""
     for td_team, c in zip([td_ht.loc[idx], td_at.loc[idx]], team_colors):
         x_cols = [x for x in td_team.index if x[-2:] == "_x"]
         y_cols = [y for y in td_team.index if y[-2:] == "_y"]
@@ -881,7 +877,6 @@ def _plot_single_frame(
         )
         variable_fig_objs.append(fig_obj)
 
-        # Add shirt number to every dot
         for x, y in zip(x_cols, y_cols):
             if pd.isnull(td_team[x]):
                 continue
@@ -890,12 +885,32 @@ def _plot_single_frame(
             fig_obj = ax.text(
                 td_team[x] - correction,
                 td_team[y] - 0.5,
-                x.split("_")[1],  # player number
+                x.split("_")[1],
                 fontsize=9,
                 c=pick_bw_for_contrast(to_rgb(c)),
                 zorder=3.0,
             )
             variable_fig_objs.append(fig_obj)
+
+    return variable_fig_objs, ax
+
+
+def _plot_single_frame(
+    ax: plt.axes,
+    td_ht: pd.DataFrame,
+    td_at: pd.DataFrame,
+    idx: int,
+    team_colors: list[str],
+    variable_fig_objs: list,
+    td: pd.DataFrame,
+    game: Game,
+    pitch_color,
+    alpha: float = 0.9,
+) -> tuple[list, plt.axes]:
+    """Helper function to plot a single frame of tracking data"""
+    variable_fig_objs, ax = _plot_player_positions(
+        ax, td_ht, td_at, idx, team_colors, variable_fig_objs, alpha
+    )
 
     # Plot the ball
     fig_obj = ax.scatter(
@@ -912,48 +927,6 @@ def _plot_single_frame(
         fontsize=14,
     )
     variable_fig_objs.append(fig_obj)
-
-    return variable_fig_objs, ax
-
-
-def _plot_overlay_frame(
-    ax: plt.axes,
-    td_ht: pd.DataFrame,
-    td_at: pd.DataFrame,
-    idx: int,
-    team_colors: list[str],
-    variable_fig_objs: list,
-    alpha: float = 0.5,
-):
-    # Scatter plot the teams
-    for td_team, c in zip([td_ht.loc[idx], td_at.loc[idx]], team_colors):
-        x_cols = [x for x in td_team.index if x[-2:] == "_x"]
-        y_cols = [y for y in td_team.index if y[-2:] == "_y"]
-        fig_obj = ax.scatter(
-            td_team[x_cols],
-            td_team[y_cols],
-            c=c,
-            alpha=alpha,
-            s=90,
-            zorder=2.5,
-        )
-        variable_fig_objs.append(fig_obj)
-
-        # Add shirt number to every dot
-        for x, y in zip(x_cols, y_cols):
-            if pd.isnull(td_team[x]):
-                continue
-
-            correction = 0.5 if len(x.split("_")[1]) == 1 else 0.8
-            fig_obj = ax.text(
-                td_team[x] - correction,
-                td_team[y] - 0.5,
-                x.split("_")[1],  # player number
-                fontsize=9,
-                c=pick_bw_for_contrast(to_rgb(c)),
-                zorder=3.0,
-            )
-            variable_fig_objs.append(fig_obj)
 
     return variable_fig_objs, ax
 
@@ -1120,6 +1093,8 @@ def diff_frames(
         alpha=0.9,
     )
 
-    _, ax = _plot_overlay_frame(ax, td_ht_2, td_at_2, frame_2_idx, team_colors, [])
+    _, ax = _plot_player_positions(
+        ax, td_ht_2, td_at_2, frame_2_idx, team_colors, [], 0.5
+    )
 
     return fig, ax
