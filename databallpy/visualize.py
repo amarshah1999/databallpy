@@ -916,6 +916,48 @@ def _plot_single_frame(
     return variable_fig_objs, ax
 
 
+def _plot_overlay_frame(
+    ax: plt.axes,
+    td_ht: pd.DataFrame,
+    td_at: pd.DataFrame,
+    idx: int,
+    team_colors: list[str],
+    variable_fig_objs: list,
+    alpha: float = 0.5,
+):
+    # Scatter plot the teams
+    for td_team, c in zip([td_ht.loc[idx], td_at.loc[idx]], team_colors):
+        x_cols = [x for x in td_team.index if x[-2:] == "_x"]
+        y_cols = [y for y in td_team.index if y[-2:] == "_y"]
+        fig_obj = ax.scatter(
+            td_team[x_cols],
+            td_team[y_cols],
+            c=c,
+            alpha=alpha,
+            s=90,
+            zorder=2.5,
+        )
+        variable_fig_objs.append(fig_obj)
+
+        # Add shirt number to every dot
+        for x, y in zip(x_cols, y_cols):
+            if pd.isnull(td_team[x]):
+                continue
+
+            correction = 0.5 if len(x.split("_")[1]) == 1 else 0.8
+            fig_obj = ax.text(
+                td_team[x] - correction,
+                td_team[y] - 0.5,
+                x.split("_")[1],  # player number
+                fontsize=9,
+                c=pick_bw_for_contrast(to_rgb(c)),
+                zorder=3.0,
+            )
+            variable_fig_objs.append(fig_obj)
+
+    return variable_fig_objs, ax
+
+
 def _plot_variable_of_interest(
     ax: plt.axes,
     value: any,
@@ -1006,3 +1048,78 @@ def _plot_events(
     variable_fig_objs.append(fig_obj)
 
     return variable_fig_objs, ax
+
+
+def diff_frames(
+    game: Game,
+    frame_1_idx: int,
+    td_2: pd.DataFrame,
+    frame_2_idx: int,
+    team_colors: list[str] = ["green", "red"],
+    fig: plt.figure = None,
+    ax: plt.axes = None,
+    title: str = None,
+) -> tuple[plt.figure, plt.axes]:
+    """
+    TODO: Add description
+    """
+    home_cols = np.array(
+        [[x + "_x", x + "_y"] for x in game.get_column_ids(team="home")]
+    ).reshape(1, -1)[0]
+    away_cols = np.array(
+        [[x + "_x", x + "_y"] for x in game.get_column_ids(team="away")]
+    ).reshape(1, -1)[0]
+
+    td_1 = game.tracking_data.loc[[frame_1_idx]]
+    td_ht_1 = td_1[home_cols]
+    td_at_1 = td_1[away_cols]
+
+    td_ht_2 = td_2[home_cols]
+    td_at_2 = td_2[away_cols]
+
+    pitch_color = "mediumseagreen"
+    if fig is None and ax is None:
+        fig, ax = plot_soccer_pitch(
+            field_dimen=game.pitch_dimensions, pitch_color=pitch_color
+        )
+    if title:
+        ax.set_title(title)
+
+    contrasting_color = pick_bw_for_contrast(to_rgb(pitch_color))
+
+    # Set game name
+    ax.text(
+        game.pitch_dimensions[0] / -2.0 + 2,
+        game.pitch_dimensions[1] / 2.0 + 1.0,
+        game.home_team_name,
+        fontsize=14,
+        c=team_colors[0],
+        zorder=2.5,
+        ha="left",
+    )
+    ax.text(
+        game.pitch_dimensions[0] / 2.0 - 2,
+        game.pitch_dimensions[1] / 2.0 + 1.0,
+        game.away_team_name,
+        fontsize=14,
+        c=team_colors[1],
+        zorder=2.5,
+        ha="right",
+    )
+
+    _, ax = _plot_single_frame(
+        ax,
+        td_ht_1,
+        td_at_1,
+        frame_1_idx,
+        team_colors,
+        [],
+        td_1,
+        game,
+        pitch_color,
+        alpha=0.9,
+    )
+
+    _, ax = _plot_overlay_frame(ax, td_ht_2, td_at_2, frame_2_idx, team_colors, [])
+
+    return fig, ax
