@@ -1034,7 +1034,7 @@ def diff_frames(
     title: str = None,
 ) -> tuple[plt.figure, plt.axes]:
     """
-    TODO: Add description
+    A method to overlay two tracking frames on the same pitch. The second frame is overlayed with an alpha of 0.5 on top of the first frame.
     """
     home_cols = np.array(
         [[x + "_x", x + "_y"] for x in game.get_column_ids(team="home")]
@@ -1057,8 +1057,6 @@ def diff_frames(
         )
     if title:
         ax.set_title(title)
-
-    contrasting_color = pick_bw_for_contrast(to_rgb(pitch_color))
 
     # Set game name
     ax.text(
@@ -1094,7 +1092,7 @@ def diff_frames(
     )
 
     _, ax = _plot_player_positions(
-        ax, td_ht_2, td_at_2, frame_2_idx, team_colors, [], 0.5
+        ax, td_ht_2, td_at_2, frame_2_idx, team_colors, [], alpha=0.5
     )
 
     return fig, ax
