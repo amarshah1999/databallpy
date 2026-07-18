@@ -335,9 +335,7 @@ class TestVisualize(unittest.TestCase):
 
         n_labels = sum(
             td_ht.loc[idx][[c for c in home_cols if c.endswith("_x")]].notna()
-        ) + sum(
-            td_at.loc[idx][[c for c in away_cols if c.endswith("_x")]].notna()
-        )
+        ) + sum(td_at.loc[idx][[c for c in away_cols if c.endswith("_x")]].notna())
         self.assertEqual(len(variable_fig_objs), 2 + n_labels)
         for scatter in variable_fig_objs[:2]:
             self.assertAlmostEqual(scatter.get_alpha(), 0.8)

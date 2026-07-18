@@ -42,8 +42,12 @@ class TestTTIConstraint(unittest.TestCase):
         self.assertEqual(self.constraint.max_time_to_intercept_seconds, 1.0)
         self.assertEqual(self.constraint.reaction_time, 0.1)
         self.assertEqual(self.constraint.max_velocity, 5.0)
-        self.assertIn("home_34_x", self.constraint.player_to_starting_pos_and_vel_map.index)
-        self.assertIn("away_17_vy", self.constraint.player_to_starting_pos_and_vel_map.index)
+        self.assertIn(
+            "home_34_x", self.constraint.player_to_starting_pos_and_vel_map.index
+        )
+        self.assertIn(
+            "away_17_vy", self.constraint.player_to_starting_pos_and_vel_map.index
+        )
 
     def test_tti(self):
         cases = [

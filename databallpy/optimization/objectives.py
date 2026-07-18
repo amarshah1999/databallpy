@@ -12,6 +12,7 @@ from databallpy.utils.utils import sigmoid
 from scipy.ndimage import zoom
 
 XT_MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "open_play_xT.npy"
+GRID_SIZE = (106, 68)
 
 
 class WeightedPitchControlObjective(ObjectiveTerm):
@@ -25,9 +26,11 @@ class WeightedPitchControlObjective(ObjectiveTerm):
         super().__init__(computation_type=ObjectiveType.GRID)
         self.grid = np.meshgrid(
             np.linspace(
-                -game.pitch_dimensions[0] / 2, game.pitch_dimensions[0] / 2, 106
+                -game.pitch_dimensions[0] / 2, game.pitch_dimensions[0] / 2, GRID_SIZE[0]
             ),
-            np.linspace(-game.pitch_dimensions[1] / 2, game.pitch_dimensions[1] / 2, 68),
+            np.linspace(
+                -game.pitch_dimensions[1] / 2, game.pitch_dimensions[1] / 2, GRID_SIZE[1]
+            ),
         )
 
         self.attacking_team = frame["team_possession"]
@@ -43,7 +46,9 @@ class WeightedPitchControlObjective(ObjectiveTerm):
         if xt_array is None:
             open_play_xt = np.load(XT_MODEL_PATH)
             # we are using (y, x) orientation instead of (x, y) so that it matches
-            self.xt_array = zoom(open_play_xt, (106 / 264, 68 / 196), order=1).T
+            self.xt_array = zoom(
+                open_play_xt, (GRID_SIZE[0] / 264, GRID_SIZE[1] / 196), order=1
+            ).T
         else:
             self.xt_array = xt_array
 
@@ -94,7 +99,7 @@ class PressureObjective(ObjectiveTerm):
 
         for attacking_player in self.players_to_press:
             pressure = temp_tracking_df.get_pressure_on_player(
-                temp_tracking_df.index[0], attacking_player, [106, 68], d_front=9
+                temp_tracking_df.index[0], attacking_player, GRID_SIZE, d_front=9
             )
             # compute the mean pressure on a player by dividing by number of players being pressed
             pressure_score += pressure / len(self.players_to_press)

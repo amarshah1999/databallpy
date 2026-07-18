@@ -68,7 +68,6 @@ class TestWeightedPitchControlObjective(unittest.TestCase):
         self.assertEqual(objective.xt_array.shape, GRID_SHAPE)
 
     def test_compute(self):
-
         xt_array = np.full(GRID_SHAPE, 0.5)
         total_xt = float(np.sum(xt_array))
         cases = [

@@ -129,5 +129,3 @@ class TestOptimizeTrackingFrame(unittest.TestCase):
         )
         algorithm.return_value.run.assert_called_once_with()
         self.assertIs(result, expected_result)
-
-
