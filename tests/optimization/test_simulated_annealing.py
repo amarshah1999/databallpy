@@ -192,3 +192,43 @@ class TestSimulatedAnnealing(unittest.TestCase):
         self.assertIsInstance(result, OptimizationResult)
         # with no improvement, the run breaks at the first patience checkpoint (i == 2)
         self.assertEqual(spy_objective.compute.call_count, 2)
+
+    def test_run_logs_progress_when_verbose(self):
+        # verbose=True with a log_interval that divides an iteration index hits the
+        # progress-logging branch (set_postfix + LOGGER.info)
+        sa = self._make_sa(
+            objective_terms=[_ConstantObjective(5.0)],
+            weights=[1.0],
+            num_iterations=5,
+            patience=100,
+            log_interval=2,
+            verbose=True,
+        )
+        logger_name = "databallpy.optimization.simulated_annealing"
+        with self.assertLogs(logger_name, level="INFO") as log_ctx:
+            result = sa.run()
+
+        self.assertIsInstance(result, OptimizationResult)
+        self.assertTrue(
+            any("Iteration" in message for message in log_ctx.output),
+            msg=f"expected an iteration progress log, got {log_ctx.output}",
+        )
+
+    def test_run_updates_checkpoint_when_improving(self):
+        # a positive constant objective improves the best score before the first
+        # patience checkpoint, so the run updates the checkpoint instead of stopping
+        spy_objective = _ConstantObjective(5.0)
+        spy_objective.compute = MagicMock(return_value=5.0)
+        sa = self._make_sa(
+            objective_terms=[spy_objective],
+            weights=[1.0],
+            num_iterations=5,
+            patience=2,
+            verbose=False,
+        )
+        result = sa.run()
+
+        self.assertEqual(result.best_result, 5.0)
+        # improvement at i==2 updates last_checkpoint_score (no break); it runs until
+        # the next checkpoint at i==4 where there is no further improvement
+        self.assertEqual(spy_objective.compute.call_count, 4)

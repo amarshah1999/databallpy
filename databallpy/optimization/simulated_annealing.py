@@ -20,6 +20,39 @@ LOGGER = create_logger(__name__)
 
 
 class SimulatedAnnealing(OptimizationAlgorithm):
+    """Optimize the positions of defending players in a single tracking data frame
+    using simulated annealing.
+
+    See https://www.geeksforgeeks.org/artificial-intelligence/what-is-simulated-annealing/
+    for a description of the annealing parameters.
+
+    Args:
+        game (Game): The game object whose tracking data is being optimized.
+        selected_frame_idx (int): Index of the tracking data frame to optimize.
+        objective_terms (list[ObjectiveTerm]): The objective terms whose weighted sum
+            is maximized.
+        weights (list[float]): The weight of each objective term. Must have the same
+            length as ``objective_terms``.
+        constraints (list[Constraint], optional): Constraints that a perturbed frame
+            must satisfy to be accepted. Defaults to [].
+        defending_players_to_optimize (list[str] | None, optional): Player ids of the
+            players whose positions may be perturbed. If None, defaults to all players
+            of the team that is not in possession. Defaults to None.
+        distance_perturbation (float, optional): Maximum distance a player
+            may be moved in each of the x and y directions per perturbation. Defaults
+            to 0.2.
+        num_iterations (int, optional): The maximum number of annealing iterations.
+            Defaults to 1000.
+        patience (int, optional): The number of iterations without improvement in the
+            best score after which the search stops early. Defaults to 200.
+        log_interval (int | None, optional): How often (in iterations) to log the best
+            score. If None, logs roughly five times over the run. Defaults to None.
+        random_state (int | None, optional): Seed for the random number generator.
+            If None, the random number generator is not seeded. Defaults to None.
+        verbose (bool, optional): Whether to show a progress bar and log progress.
+            Defaults to True.
+    """
+
     def __init__(
         self,
         game: Game,
@@ -42,7 +75,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
             constraints=constraints,
             weights=weights,
         )
-        # annealing params, per https://www.geeksforgeeks.org/artificial-intelligence/what-is-simulated-annealing/
+        # annealing params
         self.distance_perturbation = distance_perturbation
         self.p_0 = 0.5
         self.T_0 = -100 / (math.log(self.p_0))
@@ -67,9 +100,16 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         )
 
     def perturbation(self, input_frame):
+        """Perturb the position of a randomly chosen defending player and return the new frame.
+
+        Args:
+            input_frame (pd.Series): The frame to perturb.
+
+        Returns:
+            pd.Series: The perturbed frame.
+        """
         proposed_new_frame = deepcopy(input_frame)
         # randomly choose 1 of the defenders
-        # TODO see if we can cache the unselected players to avoid recomputing every time
         self.selected_players = self._rng.sample(self.defending_players_to_optimize, 1)
         for player_id in self.selected_players:
             # move each player up to a maximal distance from their starting positions

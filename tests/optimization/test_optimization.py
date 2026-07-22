@@ -129,3 +129,51 @@ class TestOptimizeTrackingFrame(unittest.TestCase):
         )
         algorithm.return_value.run.assert_called_once_with()
         self.assertIs(result, expected_result)
+
+
+class TestAbstractNotImplemented(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.game = _load_test_game()
+
+    def test_objective_term_compute_not_implemented(self):
+        term = ObjectiveTerm(ObjectiveType.GRID)
+        with self.assertRaises(NotImplementedError):
+            term.compute(pd.Series(dtype=float))
+
+    def test_constraint_check_not_implemented(self):
+        # a subclass delegating to the base implementation hits Constraint.check
+        class _SuperCallingConstraint(Constraint):
+            def check(self, proposed_new_frame, player_id):
+                return super().check(proposed_new_frame, player_id)
+
+        with self.assertRaises(NotImplementedError):
+            _SuperCallingConstraint().check(pd.Series(dtype=float), "home_1")
+
+    def test_algorithm_run_not_implemented(self):
+        # a subclass delegating to the base implementation hits OptimizationAlgorithm.run
+        class _SuperCallingAlgorithm(OptimizationAlgorithm):
+            def __init__(
+                self,
+                game,
+                selected_frame_idx,
+                objective_terms,
+                weights,
+                constraints=None,
+            ):
+                super().__init__(
+                    game=game,
+                    selected_frame_idx=selected_frame_idx,
+                    objective_terms=objective_terms,
+                    weights=weights,
+                    constraints=constraints,
+                )
+
+            def run(self):
+                return super().run()
+
+        algorithm = _SuperCallingAlgorithm(
+            self.game, 1, [_ConstantObjective(1.0)], [1.0]
+        )
+        with self.assertRaises(NotImplementedError):
+            algorithm.run()

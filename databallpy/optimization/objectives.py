@@ -16,7 +16,22 @@ GRID_SIZE = (106, 68)
 
 
 class WeightedPitchControlObjective(ObjectiveTerm):
-    # Computes the net pitch control for the defending team over the attacking team
+    """Objective term that scores the net pitch control of the defending team over the
+    attacking team, weighted by the expected threat (xT) of each area of the pitch.
+
+    For every cell of a grid over the pitch, the difference between the defending and
+    attacking teams' influence is squashed with a steep sigmoid (so each cell counts
+    as roughly controlled by one team or the other) and multiplied by the xT value of
+    that cell. The score is the sum over the grid, so higher values mean the defending
+    team controls more of the high-threat areas.
+
+    Args:
+        game (Game): The game whose tracking data is being optimized.
+        frame (pd.Series): The initial tracking data frame.
+        xt_array (np.ndarray | None, optional): The expected threat values over the
+            grid. Uses the default open-play xT model if None.
+    """
+
     def __init__(
         self,
         game: Game,
@@ -74,6 +89,18 @@ class WeightedPitchControlObjective(ObjectiveTerm):
 
 
 class PressureObjective(ObjectiveTerm):
+    """Objective term that scores the mean pressure exerted on a set of players.
+
+    The pressure on every player in ``players_to_press`` is computed as defined in ``TrackingData.get_pressure_on_player``.
+
+    Args:
+        game (Game): The game whose tracking data is being optimized.
+        frame (pd.Series): The initial tracking data frame.
+        players_to_press (list[str] | None, optional): Column ids of the players whose
+            pressure is measured. If None, defaults to all players of the team in
+            possession.
+    """
+
     def __init__(
         self,
         game: Game,
