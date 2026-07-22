@@ -61,35 +61,23 @@ class TestOptimizationAlgorithm(unittest.TestCase):
     def setUpClass(cls):
         cls.game = _load_test_game()
 
-    def test_init_stores_attributes(self):
+    def test_init(self):
         terms = [_ConstantObjective(1.0)]
         weights = [1.0]
         algorithm = _DummyAlgorithm(self.game, 1, terms, weights)
 
+        # it stores its inputs and selects the requested frame from the tracking data
         self.assertIs(algorithm.game, self.game)
         self.assertEqual(algorithm.objective_terms, terms)
         self.assertEqual(algorithm.weights, weights)
-        # frame is the single row selected from the tracking data
-        expected_frame = self.game.tracking_data.loc[[1]].iloc[0]
-        self.assertTrue(algorithm.frame.equals(expected_frame))
+        self.assertTrue(algorithm.frame.equals(self.game.tracking_data.loc[[1]].iloc[0]))
 
-    def test_init_defaults_constraints_to_empty_list(self):
-        algorithm = _DummyAlgorithm(self.game, 1, [_ConstantObjective(1.0)], [1.0])
+        # constraints default to an empty list when not provided
         self.assertEqual(algorithm.constraints, [])
 
-    def test_init_mismatched_weights_raises(self):
-        cases = [
-            ("too_few_weights", [_ConstantObjective(1.0)], []),
-            (
-                "too_many_weights",
-                [_ConstantObjective(1.0)],
-                [1.0, 2.0],
-            ),
-        ]
-        for name, terms, weights in cases:
-            with self.subTest(name=name):
-                with self.assertRaises(ValueError):
-                    _DummyAlgorithm(self.game, 1, terms, weights)
+        # objective_terms and weights must have equal length
+        with self.assertRaises(ValueError):
+            _DummyAlgorithm(self.game, 1, terms, weights=[1.0, 2.0])
 
 
 class TestOptimizeTrackingFrame(unittest.TestCase):

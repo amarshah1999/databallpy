@@ -70,9 +70,9 @@ class TestSimulatedAnnealing(unittest.TestCase):
         defaults.update(overrides)
         return SimulatedAnnealing(**defaults)
 
-    def test_init_sets_parameters(self):
+    def test_init(self):
+        # parameters are stored, including the derived annealing temperature
         sa = self._make_sa(num_iterations=100, patience=20, distance_perturbation=0.3)
-
         self.assertEqual(sa.distance_perturbation, 0.3)
         self.assertEqual(sa.p_0, 0.5)
         self.assertAlmostEqual(sa.T_0, -100 / math.log(0.5))
@@ -81,32 +81,24 @@ class TestSimulatedAnnealing(unittest.TestCase):
         self.assertEqual(sa.num_iterations, 100)
         self.assertEqual(sa.patience, 20)
 
-    def test_init_log_interval(self):
-        cases = [
-            ("default_large", 100, None, 20),
-            ("default_small", 3, None, 1),
-            ("explicit", 100, 7, 7),
-        ]
-        for name, num_iterations, log_interval, expected in cases:
-            with self.subTest(name=name):
-                sa = self._make_sa(
-                    num_iterations=num_iterations, log_interval=log_interval
-                )
-                self.assertEqual(sa.log_interval, expected)
+        # log_interval defaults to ~5 logs over the run, or the explicit value if given
+        self.assertEqual(self._make_sa(num_iterations=100).log_interval, 20)
+        self.assertEqual(self._make_sa(num_iterations=3).log_interval, 1)
+        self.assertEqual(
+            self._make_sa(num_iterations=100, log_interval=7).log_interval, 7
+        )
 
-    def test_init_mismatched_weights_raises(self):
+        # objective_terms and weights must have equal length
         with self.assertRaises(ValueError):
-            self._make_sa(objective_terms=[_ConstantObjective(1.0)], weights=[1.0, 2.0])
+            self._make_sa(weights=[1.0, 2.0])
 
-    def test_init_uses_explicit_defending_players(self):
+        # an explicit list of defending players is used as-is (no lookup on the game)
         sa = self._make_sa(defending_players_to_optimize=["home_1", "home_2"])
         self.assertEqual(sa.defending_players_to_optimize, ["home_1", "home_2"])
         self.game.get_column_ids.assert_not_called()
 
-    def test_init_default_defending_players_is_opposite_team(self):
-        # the defending team is the one NOT in possession
-        cases = [("away", "home"), ("home", "away")]
-        for possession, expected_team in cases:
+        # otherwise it defaults to the players of the team NOT in possession
+        for possession, expected_team in [("away", "home"), ("home", "away")]:
             with self.subTest(possession=possession):
                 self.game.get_column_ids = MagicMock(return_value=["home_34"])
                 original = self.game.tracking_data.loc[1, "team_possession"]

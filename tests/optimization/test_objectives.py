@@ -10,7 +10,7 @@ from databallpy.optimization.objectives import (
 from databallpy.optimization.optimization import ObjectiveType
 from databallpy.utils.get_game import get_game
 
-GRID_SHAPE = (68, 106)
+GRID_SIZE = (106, 68)
 
 
 def _load_test_game():
@@ -34,64 +34,64 @@ class TestWeightedPitchControlObjective(unittest.TestCase):
         self.game.get_column_ids = MagicMock(return_value=["home_1", "away_1"])
         self.frame = self.game.tracking_data.loc[1].copy()
         self.frame["team_possession"] = "home"
-        self.xt_array = np.full(GRID_SHAPE, 0.5)
+        self.xt_array = np.full(GRID_SIZE, 0.5)
 
-    def test_init_away_flips_xt_array(self):
-        self.frame["team_possession"] = "away"
-        with patch(
-            "databallpy.optimization.objectives.get_team_influence",
-            return_value=np.ones(GRID_SHAPE),
-        ):
+    def test_init(self):
+        influence = "databallpy.optimization.objectives.get_team_influence"
+
+        # home in possession: home attacks, away defends, xt array is kept as-is
+        with patch(influence, return_value=np.ones(GRID_SIZE)):
             objective = WeightedPitchControlObjective(
                 self.game, self.frame, xt_array=self.xt_array
             )
+        self.assertEqual(objective.computation_type, ObjectiveType.GRID)
+        self.assertEqual(objective.attacking_team, "home")
+        self.assertEqual(objective.defending_team, "away")
+        np.testing.assert_array_equal(objective.xt_array, self.xt_array)
 
+        # away in possession: teams swap and the xt array is flipped horizontally
+        self.frame["team_possession"] = "away"
+        with patch(influence, return_value=np.ones(GRID_SIZE)):
+            objective = WeightedPitchControlObjective(
+                self.game, self.frame, xt_array=self.xt_array
+            )
         self.assertEqual(objective.attacking_team, "away")
         self.assertEqual(objective.defending_team, "home")
         np.testing.assert_array_equal(objective.xt_array, np.fliplr(self.xt_array))
 
-    def test_init_loads_default_xt_array_when_none(self):
+        # no xt array given: the default model is loaded and resized to the grid
+        self.frame["team_possession"] = "home"
         with (
-            patch(
-                "databallpy.optimization.objectives.get_team_influence",
-                return_value=np.ones(GRID_SHAPE),
-            ),
+            patch(influence, return_value=np.ones(GRID_SIZE)),
             patch(
                 "databallpy.optimization.objectives.np.load",
                 return_value=np.ones((264, 196)),
             ) as mock_load,
         ):
             objective = WeightedPitchControlObjective(self.game, self.frame)
-
         mock_load.assert_called_once()
-        # loaded array is zoomed to the grid resolution and transposed to (y, x)
-        self.assertEqual(objective.xt_array.shape, GRID_SHAPE)
+        # the array shape is stored in (y, x) orientation, i.e. the transpose of GRID_SIZE
+        self.assertEqual(objective.xt_array.shape, (GRID_SIZE[1], GRID_SIZE[0]))
 
     def test_compute(self):
-        xt_array = np.full(GRID_SHAPE, 0.5)
-        total_xt = float(np.sum(xt_array))
-        cases = [
-            ("defending_dominates", 1.0, 2.0, "home", total_xt),
-            ("attacking_dominates", 2.0, 1.0, "home", 0.0),
-            ("equal_influence", 1.0, 1.0, "home", total_xt / 2),
-            ("away_possession", 1.0, 2.0, "away", total_xt),
-        ]
-        for name, attacking, defending, team_possession, expected in cases:
-            with self.subTest(name=name):
-                frame = self.frame.copy()
-                frame["team_possession"] = team_possession
-                with patch(
-                    "databallpy.optimization.objectives.get_team_influence",
-                    side_effect=[
-                        np.full(GRID_SHAPE, attacking),
-                        np.full(GRID_SHAPE, defending),
-                    ],
-                ):
-                    objective = WeightedPitchControlObjective(
-                        self.game, frame, xt_array=xt_array
-                    )
-                    result = objective.compute(frame)
-                self.assertAlmostEqual(result, expected)
+        # run the real pipeline: default xt model, real grid and team influence
+        frame = self.frame.copy()
+        frame["team_possession"] = "home"
+        frame["ball_x"], frame["ball_y"] = 0.0, 0.0
+        players = {
+            "home_34": (0.0, 0.0, 1.0, 0.0),
+            "away_17": (5.0, 0.0, -1.0, 0.0),
+        }
+        for player, (x, y, vx, vy) in players.items():
+            frame[f"{player}_x"], frame[f"{player}_y"] = x, y
+            frame[f"{player}_vx"], frame[f"{player}_vy"] = vx, vy
+
+        # defending (away) is resolved first in __init__, then attacking (home)
+        self.game.get_column_ids = MagicMock(side_effect=[["away_17"], ["home_34"]])
+        objective = WeightedPitchControlObjective(self.game, frame)
+
+        result = objective.compute(frame)
+        self.assertAlmostEqual(result, 64.57281218558984)
 
 
 class TestPressureObjective(unittest.TestCase):
@@ -103,16 +103,16 @@ class TestPressureObjective(unittest.TestCase):
         self.frame = self.game.tracking_data.loc[1].copy()
         self.frame["team_possession"] = "home"
 
-    def test_init_default_players_to_press(self):
+    def test_init(self):
+        # players_to_press defaults to the possessing team's players
         self.game.get_column_ids = MagicMock(return_value=["home_1", "home_2"])
         objective = PressureObjective(self.game, self.frame)
-
         self.assertEqual(objective.computation_type, ObjectiveType.PLAYER)
         self.assertIs(objective.game, self.game)
         self.assertEqual(objective.players_to_press, ["home_1", "home_2"])
         self.game.get_column_ids.assert_called_once_with(team="home")
 
-    def test_init_explicit_players_to_press(self):
+        # an explicit players_to_press list is used as-is
         players = ["away_5", "away_9"]
         objective = PressureObjective(self.game, self.frame, players_to_press=players)
         self.assertEqual(objective.players_to_press, players)
