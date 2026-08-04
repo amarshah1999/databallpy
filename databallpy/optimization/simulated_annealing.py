@@ -1,9 +1,10 @@
 # Annealer
 import math
 import random
-import numpy as np
-
 from copy import deepcopy
+
+import numpy as np
+from tqdm import tqdm
 
 from databallpy import Game
 from databallpy.optimization.optimization import (
@@ -12,8 +13,6 @@ from databallpy.optimization.optimization import (
     OptimizationAlgorithm,
     OptimizationResult,
 )
-from tqdm import tqdm
-
 from databallpy.utils.logging import create_logger
 
 LOGGER = create_logger(__name__)
@@ -145,7 +144,7 @@ class SimulatedAnnealing(OptimizationAlgorithm):
         best_solution = deepcopy(self.frame)
         latest_frame = deepcopy(self.frame)
         last_checkpoint_score = 0
-        T = self.T
+        t = self.T
 
         progress_iter = tqdm(
             range(1, self.num_iterations),
@@ -159,14 +158,14 @@ class SimulatedAnnealing(OptimizationAlgorithm):
             new_score = self.compute_objective(perturbed_frame)
             # take the new result if it's better, or randomly take a worse result with decaying probability
             if (new_score > best_score) or math.exp(
-                np.clip((new_score - best_score) / T, -700, 700)
+                np.clip((new_score - best_score) / t, -700, 700)
             ) > self._rng.random():
                 latest_frame = perturbed_frame
             if new_score > best_score:
                 best_score = new_score
                 best_solution = perturbed_frame
                 latest_frame = perturbed_frame
-            T = T * self.cooling_rate
+            t = t * self.cooling_rate
 
             # logging
             if self.verbose and i % self.log_interval == 0:

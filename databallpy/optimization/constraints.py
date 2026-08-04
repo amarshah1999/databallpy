@@ -20,7 +20,7 @@ class TTIConstraint(Constraint):
         max_time_to_intercept_seconds (float, optional): The maximum time, in seconds,
             a player is allowed to take to reach a proposed position. Defaults to 1.
         reaction_time (float, optional): The player's reaction time in seconds before
-            starting to move. Defaults to 0.1.
+            starting to move. Defaults to 0.7.
         max_velocity (float, optional): The maximum player velocity in meters per
             second used to estimate travel time. Defaults to 5.0.
     """
@@ -30,7 +30,7 @@ class TTIConstraint(Constraint):
         game: Game,
         frame: pd.Series,
         max_time_to_intercept_seconds: float = 1,
-        reaction_time: float = 0.1,
+        reaction_time: float = 0.7,
         max_velocity: float = 5.0,
     ):
         self.max_time_to_intercept_seconds = max_time_to_intercept_seconds

@@ -1,15 +1,14 @@
-import pickle
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.ndimage import zoom
 
 from databallpy.features.pitch_control import get_team_influence
 from databallpy.game import Game
 from databallpy.optimization.optimization import ObjectiveTerm, ObjectiveType
 from databallpy.schemas.tracking_data import TrackingData
 from databallpy.utils.utils import sigmoid
-from scipy.ndimage import zoom
 
 XT_MODEL_PATH = Path(__file__).resolve().parents[1] / "models" / "open_play_xT.npy"
 GRID_SIZE = (106, 68)
